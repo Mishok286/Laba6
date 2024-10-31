@@ -1,0 +1,103 @@
+#include <math.h>
+#include <stdbool.h>
+#include <stdlib.h>
+#include <stdio.h>
+
+// Функція для перевірки маски кольору на основі позиції
+int check_mask(int r, int c, int color) {
+    // Визначаємо колір на основі парності координат
+    if ((r + c) % 2 == 0) 
+        return (color == 1) ? 0 : 1; 
+    return color;
+}
+
+// Функція для перетворення булевої послідовності в ціле число
+int Btoint(bool* seq, int start) {
+    int sum = 0;
+    // Обчислюємо ціле число на основі булевої послідовності
+    for (int i = 0; i < 8; i++) {
+        if (seq[i + start]) {
+            sum += pow(2, 8 - 1 - i);
+        }
+    }
+    return sum;
+}
+
+// Функція для обчислення дійсної довжини з матриці QR-коду
+int flen(int qrc[21][21]) {
+    int r = 18;
+    int len[8];
+
+    for (int i = 0; i < 8;) {
+        // Обробка кольорів парних і непарних рядків
+        if ((r + 20) % 2 == 0) {
+            len[i] = (qrc[r][20] == 1) ? 0 : 1;
+        } else {
+            len[i] = qrc[r][20];
+        }
+
+        if ((r + 19) % 2 == 0) {
+            len[i + 1] = (qrc[r][19] == 1) ? 0 : 1;
+        } else {
+            len[i + 1] = qrc[r][19];
+        }
+
+        i += 2;
+        r--;
+    }
+
+    // Обчислення дійсної довжини на основі зібраних даних
+    int truelen = 0;
+    for (int i = 0; i < 8; i++) {
+        if (len[i] == 1) {
+            truelen += pow(2, 8 - 1 - i);
+        }
+    }
+    return truelen;
+}
+
+// Функція для зчитування послідовності з матриці QR-коду
+void readseq(int qrc[21][21], bool* seq, int size) {
+    bool way = true;
+    int r = 14, c = 20;
+    int cnt = 0;
+
+    while (cnt < (size * 8)) {
+        // Зчитуємо значення на основі маски кольору
+        seq[cnt] = (check_mask(r, c, qrc[r][c]) == 1) ? true : false;
+        seq[cnt + 1] = (check_mask(r, c - 1, qrc[r][c - 1]) == 1) ? true : false;
+        cnt += 2;
+
+        // Зміна напрямку в залежності від позиції рядка
+        (way) ? r-- : r++;
+        if (r == 8) {
+            way = false; 
+            c -= 2; 
+            r = 9; 
+        }
+        if (r == 21) {
+            way = true; 
+            c -= 2; 
+            r = 20; 
+        }
+    }
+}
+
+// Головна функція для сканування QR-коду повернення результату у вигляді рядка
+const char *scanner(int qrcode[21][21]) {
+    int len = flen(qrcode);
+    bool* seq = (bool*)malloc(len * 8 * sizeof(bool));
+    char* result = (char*)malloc((len + 1) * sizeof(char));
+    
+    readseq(qrcode, seq, len);
+
+    // Перетворення булевої послідовності в символи
+    for (int i = 0; i < len; i++) {
+        int shift = i * 8;
+        result[i] = (char)Btoint(seq, shift);
+    }
+    result[len] = '\0';
+
+    free(seq);
+   return result;
+}
